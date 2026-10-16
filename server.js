@@ -105,6 +105,57 @@ app.use(session({
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false });
 const catalogLimiter = rateLimit({ windowMs: 60 * 1000, limit: 100, standardHeaders: 'draft-7', legacyHeaders: false });
+// Check the connection to Supabase.
+app.get('/api/supabase-check', catalogLimiter, async (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+
+  const projectUrl = process.env.SUPABASE_URL?.trim();
+  const publicKey = process.env.SUPABASE_PUBLISHABLE_KEY?.trim();
+
+  if (!projectUrl || !publicKey) {
+    return res.status(503).json({
+      ok: false,
+      message: 'The Supabase settings are missing in Render.'
+    });
+  }
+
+  try {
+    const url = new URL('/rest/v1/anime_streams', projectUrl);
+    url.searchParams.set('select', 'id');
+    url.searchParams.set('limit', '1');
+
+    const response = await fetch(url, {
+      headers: {
+        apikey: publicKey,
+        Accept: 'application/json'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({
+        ok: false,
+        message: `Supabase returned error ${response.status}. Check the saved settings and table permissions.`
+      });
+    }
+
+    const rows = await response.json();
+
+    if (!Array.isArray(rows)) {
+      throw new Error('Unexpected response');
+    }
+
+    return res.json({
+      ok: true,
+      message: 'Supabase connected. Your video-links table is readable.'
+    });
+  } catch {
+    return res.status(502).json({
+      ok: false,
+      message: 'Could not reach Supabase. Check the Project URL or try again.'
+    });
+  }
+});
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function currentUser(req) {
   if (!req.session.userId) return null;
