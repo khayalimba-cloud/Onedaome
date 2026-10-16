@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
 import connectSqlite3 from 'connect-sqlite3';
-import Database from 'node:sqlite';
+import { DatabaseSync as Database } from 'node:sqlite';
 import bcrypt from 'bcryptjs';
 import Stripe from 'stripe';
 import jwt from 'jsonwebtoken';
